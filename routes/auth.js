@@ -5,22 +5,15 @@ const authRouter = express.Router();
 const jwt = require("jsonwebtoken");
 const auth = require("../middleware/auth");  
 const nodemailer = require('nodemailer');
-
-
+ 
 
 // Signup route
 authRouter.post("/signup", async (req, res) => {
   try {
-    const { username, email, phone, password, father } = req.body;
-    if (!username || !email || !phone || !password || !father) {
+    const { username, email, phone, password } = req.body;
+    if (!username || !email || !phone || !password ) {
       return res.status(400).json({ msg: "!يرجى ملئ جميع الخانات" });
     }
-
-    // Log provided father ID for debugging
-    console.log("Provided father ID:", father);
-
-    // Generate a unique custom ID
-    const customId = await generateUniqueCustomId(username, phone);
 
     // Check if the phone number is already in use
     const existingClientByPhone = await Client.findOne({ phone });
@@ -31,14 +24,12 @@ authRouter.post("/signup", async (req, res) => {
     // Hash the password
     const hashedPassword = await bcryptjs.hash(password, 6);
 
-    // Create a new client
+    // Create a new Client
     let client = new Client({
-      _id: customId,
       phone,
       password: hashedPassword,
       username,
       email,
-      father,
     });
 
     // Add a welcome notification
@@ -47,16 +38,6 @@ authRouter.post("/signup", async (req, res) => {
       message: `.يرجى تفعيل حسابك للتمكن من استخدام التطبيق بشكل كامل`,
       createdAt: new Date(),
     });
-
-    // Verify the father ID exists in the database
-    const parentClient = await Client.findById(father);
-    if (!parentClient) {
-      return res.status(400).json({ msg: "Invalid father ID" });
-    }
-
-    // Add the new client's ID to the father's children array
-    parentClient.children.push(client._id);
-    await parentClient.save();
 
     // Save the new client to the database
     client = await client.save();
@@ -70,21 +51,24 @@ authRouter.post("/signup", async (req, res) => {
 // Sign In route
 authRouter.post("/signin", async (req, res) => {
   try {
-    const { phone, password } = req.body;
-    if (!phone || !password) {
-      return res.status(400).json({ msg: "يرجى ملئ خانتي رقم الهاتف و كلمة السر" });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ msg: "يرجى ملئ خانتي البريد الإلكتروني وكلمة السر" });
     }
-    const client = await Client.findOne({ phone });
+    const client = await Client.findOne({ email });
     if (!client) {
-      return res.status(400).json({ msg: "لا يوجد عميل يحمل هذالرقم " });
+      return res
+        .status(400)
+        .json({ msg: "لا يوجد عميل يحمل هذا البريد الإلكتروني" });
     }
-
     const isMatch = await bcryptjs.compare(password, client.password);
     if (!isMatch) {
       return res.status(400).json({ msg: "كلمة السر خاطئة" });
     }
-
-    const token = jwt.sign({ id: client._id }, "passwordKey");
+    const token = jwt.sign({ id: client._id }, process.env.JWT_SECRET);
+    res.header("x-auth-token", token);
     res.json({ token, ...client._doc });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -117,101 +101,7 @@ authRouter.get("/", auth, async (req, res) => {
   const client = await Client.findById(req.client);
   res.json({ ...client._doc, token: req.token });
 });
-
-// Fetch all clients
-authRouter.get("/clients", async (req, res) => {
-  try {
-    const clients = await Client.find({});
-    res.json(clients);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-authRouter.delete("/clients/:id", async (req, res) => {
-  try {
-    const clientId = req.params.id;
-
-    // Find and delete the client
-    const client = await Client.findByIdAndDelete(clientId);
-
-    if (!client) {
-      return res.status(404).json({ msg: "Client not found" });
-    }
-
-    // If the client has a father, remove the client from the father's children list
-    if (client.father) {
-      await Client.findByIdAndUpdate(
-        client.father,
-        { $pull: { children: clientId } },
-        { new: true }
-      );
-    }
-
-    res.json({ msg: "Client deleted successfully" });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-authRouter.put('/clients/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { activation } = req.body;
-
-    if (activation !== true) {
-      return res.status(400).json({ message: 'Invalid activation value. Must be true.' });
-    }
-
-    const now = new Date();
-    const oneYearLater = new Date(now);
-    oneYearLater.setFullYear(now.getFullYear() + 1);
-
-    // Update the client activation status and push a new notification
-    const client = await Client.findByIdAndUpdate(
-      id,
-      {
-        activation: true,
-        activationDate: now,
-        activationExpires: oneYearLater,
-        $push: {
-          notifications: {
-            title: ':التفعيل',
-            message: 'لقد تم تفعيل حسابك بنجاح',
-            createdAt: now,
-          },
-        },
-      },
-      { new: true, runValidators: true } // Return the updated document
-    );
-
-    if (!client) {
-      return res.status(404).json({ message: 'Client not found.' });
-    }
-
-    res.status(200).json(client);
-  } catch (error) {
-    console.error('Error updating client activation:', error);
-    res.status(500).json({ message: 'Server error. Unable to update client.' });
-  }
-});
-
- 
-authRouter.get('/clients/:id', async (req, res) => {
-  try {
-    const clientId = req.params.id;
-    const client = await Client.findById(clientId);
-    
-    if (!client) {
-      return res.status(404).json({ msg: 'Client not found' });
-    }
-
-    res.json(client);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
- 
+  
 authRouter.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
