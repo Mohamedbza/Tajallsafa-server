@@ -34,6 +34,10 @@ const clientSchema = new mongoose.Schema({
 resetPasswordExpires: {
     type: Date,
 },
+profilePictureUrl: {
+  type: String,
+  default: null  
+},
 });
  
 const Client = mongoose.model("Client", clientSchema);
