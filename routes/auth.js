@@ -78,32 +78,44 @@ authRouter.post("/signin", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
- 
+// Updated tokenIsValid endpoint
 authRouter.post('/tokenIsValid', async (req, res) => {
   try {
     const token = req.header('x-auth-token');
-    if (!token) return res.status(401).json(false); // 401 for missing token
+    if (!token) return res.status(401).json(false);
 
+    // Verify token structure first
+    const decoded = jwt.decode(token);
+    if (!decoded?.id) return res.status(401).json(false);
+
+    // Then verify signature and expiration
     const verified = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Additional check - verify user exists in database
-    const user = await User.findById(verified.id);
-    if (!user) return res.status(401).json(false); // 401 if user doesn't exist
+    // Verify user exists
+    const user = await User.findById(verified.id).select('-password');
+    if (!user) return res.status(401).json(false);
 
-    res.status(200).json(true);
+    // Return minimal user data if needed
+    res.status(200).json({
+      isValid: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
   } catch (err) {
-    // Specific error handling
+    console.error('Token validation error:', err);
+    
     if (err.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });
     }
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server error during token validation' });
   }
 });
-
 // Fetch user data
 authRouter.get('/client', authMiddleware, async (req, res) => {
   try {
