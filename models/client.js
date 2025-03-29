@@ -46,6 +46,5 @@ const freelancerSchema = new mongoose.Schema({
  
 
 module.exports = {
-  Freelancer: mongoose.model('Freelancer', freelancerSchema),
-  Customer: mongoose.model('Customer', customerSchema),
+  Freelancer: mongoose.model('Freelancer', freelancerSchema), 
 };

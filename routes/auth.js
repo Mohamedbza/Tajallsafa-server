@@ -3,38 +3,9 @@ const bcryptjs = require("bcryptjs");
 const Client = require("../models/client");
 const authRouter = express.Router();
 const jwt = require("jsonwebtoken");
-const auth = require("../middleware/auth");
-const { v4: uuidv4 } = require("uuid");
-const crypto = require('crypto');
+const auth = require("../middleware/auth");  
 const nodemailer = require('nodemailer');
 
-
-// Function to ensure the custom ID is unique
-const generateUniqueCustomId = async (username) => {
-  // Get the first 3 letters from the username
-  let prefix = username.slice(0, 3).toUpperCase();
-  let customId;
-  let unique = false;
-
-  while (!unique) {
-    // Generate a random alphanumeric string of length 7
-    const randomPart = Array.from({ length: 3 }, () =>
-      'abcdefghijklmnopqrstuvwxyz0123456789'.charAt(Math.floor(Math.random() * 62))
-    ).join('');
-
-    // Combine the prefix and random part to form the custom ID
-    customId = prefix + randomPart;
-
-    // Check if the customId is already in use
-    const existingClient = await Client.findOne({ _id: customId });
-
-    if (!existingClient) {
-      unique = true;
-    }
-  }
-
-  return customId;
-};
 
 
 // Signup route
