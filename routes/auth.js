@@ -98,12 +98,21 @@ authRouter.post('/tokenIsValid', async (req, res) => {
 // Fetch user data
 authRouter.get('/client', authMiddleware, async (req, res) => {
   try {
+    console.log("Received token:", req.header('x-auth-token')); // Debug token
+    console.log("Authenticated user ID:", req.user._id); // Debug user
+    
     const client = await Client.findById(req.user._id).select('-password');
-    res.json(client); // Includes profilePictureUrl
+    if (!client) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log("Returning client data:", client); // Debug response
+    res.json(client);
   } catch (err) {
+    console.error("Error in /client:", err); // Critical debug
     res.status(500).json({ error: err.message });
   }
-}); 
+});
   // Update client information: username, phone and email
   authRouter.put('/:clientid/updateClient', async (req, res) => {
     const { username, email, phone } = req.body;
