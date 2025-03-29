@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const auth = require("../middleware/auth");  
 const nodemailer = require('nodemailer');
 const authMiddleware = require("../middleware/auth");
-
+const mongoose = require("mongoose");
 // Signup route
 authRouter.post("/signup", async (req, res) => {
   try {
@@ -80,47 +80,30 @@ authRouter.post("/signin", async (req, res) => {
 });
 
 // Token validation route
-authRouter.post("/tokenIsValid", async (req, res) => {
+// Token validation
+router.post('/tokenIsValid', async (req, res) => {
   try {
-    const token = req.header("x-auth-token");
-    if (!token) return res.json({ isValid: false });
+    const token = req.header('x-auth-token');
+    if (!token) return res.json(false);
 
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (!verified) return res.json({ isValid: false });
+    if (!verified) return res.json(false);
 
-    const client = await Client.findById(verified.id);
-    if (!client) return res.json({ isValid: false });
-
-    console.log('Client data:', client); // Debugging line
-    res.json({ isValid: true, client });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.json(true);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
-const mongoose = require("mongoose");
 
-authRouter.get("/client", authMiddleware, async (req, res) => {
+// Fetch user data
+router.get('/client', authMiddleware, async (req, res) => {
   try {
-    // Get client ID from token
-    const clientId = req.client;
- 
-    if (!mongoose.Types.ObjectId.isValid(clientId)) {
-      return res.status(400).json({ message: "Invalid client ID format" });
-    }
- 
-    const client = await Client.findById(new mongoose.Types.ObjectId(clientId)).select("-password");
-
-    if (!client) {
-      return res.status(404).json({ message: "Client not found" });
-    }
-
-    res.json(client);
-  } catch (error) {
-    console.error("Error in /client route:", error);
-    res.status(500).json({ message: "Server Error" });
+    const client = await Client.findById(req.user._id).select('-password');
+    res.json(client); // Includes profilePictureUrl
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-});
-
+}); 
   // Update client information: username, phone and email
   authRouter.put('/:clientid/updateClient', async (req, res) => {
     const { username, email, phone } = req.body;
