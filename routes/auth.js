@@ -79,18 +79,27 @@ authRouter.post("/signin", async (req, res) => {
   }
 });
 
-// Token validation route
-// Token validation
+ 
 authRouter.post('/tokenIsValid', async (req, res) => {
   try {
     const token = req.header('x-auth-token');
-    if (!token) return res.json(false);
+    if (!token) return res.status(401).json(false); // 401 for missing token
 
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (!verified) return res.json(false);
+    
+    // Additional check - verify user exists in database
+    const user = await User.findById(verified.id);
+    if (!user) return res.status(401).json(false); // 401 if user doesn't exist
 
-    res.json(true);
+    res.status(200).json(true);
   } catch (err) {
+    // Specific error handling
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
     res.status(500).json({ error: err.message });
   }
 });
