@@ -92,16 +92,16 @@ authRouter.post('/tokenIsValid', async (req, res) => {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
     
     // Verify user exists
-    const user = await User.findById(verified.id).select('-password');
-    if (!user) return res.status(401).json(false);
+    const client = await CLient.findById(verified.id).select('-password');
+    if (!client) return res.status(401).json(false);
 
-    // Return minimal user data if needed
+    // Return minimal client data if needed
     res.status(200).json({
       isValid: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email
+      client: {
+        id: client._id,
+        clientname: client.client,
+        email: client.email
       }
     });
   } catch (err) {
