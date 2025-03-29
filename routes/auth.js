@@ -5,7 +5,7 @@ const authRouter = express.Router();
 const jwt = require("jsonwebtoken");
 const auth = require("../middleware/auth");  
 const nodemailer = require('nodemailer');
- 
+const authMiddleware = require("../middleware/auth");
 
 // Signup route
 authRouter.post("/signup", async (req, res) => {
@@ -97,11 +97,63 @@ authRouter.post("/tokenIsValid", async (req, res) => {
 
 
 // Get user data
-authRouter.get("/", auth, async (req, res) => {
-  const client = await Client.findById(req.client);
-  res.json({ ...client._doc, token: req.token });
+authRouter.get("/client", authMiddleware, async (req, res) => {
+  try {
+    // Get client ID from the authenticated token
+    const clientId = req.user.id;
+
+    // Fetch client data from the database
+    const client = await Client.findById(clientId).select("-password"); // Exclude password for security
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    res.json(client); // Return client data
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
 });
-  
+
+  // Update client information: username, phone and email
+  authRouter.put('/:clientid/updateClient', async (req, res) => {
+    const { username, email, phone } = req.body;
+    const clientId = req.params.clientid; // Get client ID from URL
+
+    // Validate required fields
+    if (!username || !email || !phone) {
+        return res.status(400).json({ msg: 'Please provide username, email, and phone.' });
+    }
+
+    try {
+        // Find client by ID
+        const client = await Client.findById(clientId);
+        if (!client) {
+            return res.status(404).json({ msg: 'Client not found.' });
+        }
+
+        // Check if the phone number is used by another client
+        if (client.phone !== phone) {
+            const existingClient = await Client.findOne({ phone });
+            if (existingClient && existingClient._id.toString() !== clientId) {
+                return res.status(400).json({ msg: 'Phone number already in use.' });
+            }
+        }
+
+        // Update client details
+        client.username = username;
+        client.email = email;
+        client.phone = phone;
+
+        // Save changes
+        await client.save();
+        
+        res.status(200).json({ msg: 'Client information updated successfully.', client });
+    } catch (error) {
+        res.status(500).json({ msg: error.message });
+    }
+});
 authRouter.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
