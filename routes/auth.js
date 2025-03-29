@@ -81,7 +81,7 @@ authRouter.post("/signin", async (req, res) => {
 
 // Token validation route
 // Token validation
-router.post('/tokenIsValid', async (req, res) => {
+authRouter.post('/tokenIsValid', async (req, res) => {
   try {
     const token = req.header('x-auth-token');
     if (!token) return res.json(false);
@@ -96,7 +96,7 @@ router.post('/tokenIsValid', async (req, res) => {
 });
 
 // Fetch user data
-router.get('/client', authMiddleware, async (req, res) => {
+authRouter.get('/client', authMiddleware, async (req, res) => {
   try {
     const client = await Client.findById(req.user._id).select('-password');
     res.json(client); // Includes profilePictureUrl
