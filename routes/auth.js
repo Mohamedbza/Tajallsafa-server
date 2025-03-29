@@ -97,25 +97,26 @@ authRouter.post("/tokenIsValid", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+const mongoose = require("mongoose");
 
-
-
-// Get user data
 authRouter.get("/client", authMiddleware, async (req, res) => {
   try {
-    // Get client ID from the authenticated token
+    // Get client ID from token
     const clientId = req.client;
-
-    // Fetch client data from the database
-    const client = await Client.findById(clientId).select("-password"); // Exclude password for security
+ 
+    if (!mongoose.Types.ObjectId.isValid(clientId)) {
+      return res.status(400).json({ message: "Invalid client ID format" });
+    }
+ 
+    const client = await Client.findById(new mongoose.Types.ObjectId(clientId)).select("-password");
 
     if (!client) {
       return res.status(404).json({ message: "Client not found" });
     }
 
-    res.json(client); // Return client data
+    res.json(client);
   } catch (error) {
-    console.error(error);
+    console.error("Error in /client route:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
