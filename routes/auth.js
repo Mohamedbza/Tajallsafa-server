@@ -104,7 +104,7 @@ authRouter.post("/tokenIsValid", async (req, res) => {
 authRouter.get("/client", authMiddleware, async (req, res) => {
   try {
     // Get client ID from the authenticated token
-    const clientId = req.user.id;
+    const clientId = req.client;
 
     // Fetch client data from the database
     const client = await Client.findById(clientId).select("-password"); // Exclude password for security
