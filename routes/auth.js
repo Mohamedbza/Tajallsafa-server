@@ -92,7 +92,7 @@ authRouter.post('/tokenIsValid', async (req, res) => {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
     
     // Verify user exists
-    const client = await CLient.findById(verified.id).select('-password');
+    const client = await Client.findById(verified.id).select('-password');
     if (!client) return res.status(401).json(false);
 
     // Return minimal client data if needed
