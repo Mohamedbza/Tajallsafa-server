@@ -1,7 +1,7 @@
 const { v2: cloudinary } = require('cloudinary');
 const dotenv = require('dotenv');
 const multer = require('multer');
-const { Freelancer } = require('../models/client');
+const { Client } = require('../models/client');
 
 // Load environment variables
 dotenv.config();
@@ -40,19 +40,19 @@ const uploadProfilePicture = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const freelancerId = req.body.freelancerId;
+    const clientId = req.body.clientId;
 
-    // Find the freelancer
-    const freelancer = await Freelancer.findOne({ _id: freelancerId });
+    // Find the client
+    const client = await client.findOne({ _id: clientId });
 
-    if (!freelancer) {
-      return res.status(404).json({ error: 'Freelancer not found' });
+    if (!client) {
+      return res.status(404).json({ error: 'client not found' });
     }
 
-    // Check if the freelancer already has a profile picture
-    if (freelancer.profilePictureUrl) {
+    // Check if the client already has a profile picture
+    if (client.profilePictureUrl) {
       // Extract the public_id from the old URL
-      const oldPublicId = extractPublicId(freelancer.profilePictureUrl);
+      const oldPublicId = extractPublicId(client.profilePictureUrl);
 
       if (oldPublicId) {
         // Delete the old image from Cloudinary
@@ -99,9 +99,9 @@ const uploadProfilePicture = async (req, res) => {
       height: 1200,
     });
 
-    // Update the freelancer's profile picture URL
-    freelancer.profilePictureUrl = autoCropUrl;
-    await freelancer.save();
+    // Update the client's profile picture URL
+    client.profilePictureUrl = autoCropUrl;
+    await client.save();
 
     // Send response
     res.status(200).json({
