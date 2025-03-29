@@ -67,7 +67,11 @@ authRouter.post("/signin", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ msg: "كلمة السر خاطئة" });
     }
-    const token = jwt.sign({ id: client._id }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { id: client._id },  // ✅ Ensure `id` is present in the payload
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }  // Optional: Token expires in 7 days
+    );
     res.header("x-auth-token", token);
     res.json({ token, ...client._doc });
   } catch (e) {
@@ -243,45 +247,6 @@ authRouter.post('/reset-password', async (req, res) => {
   } catch (e) {
       res.status(500).json({ error: e.message });
   }
-});
-authRouter.put('/fix-children-arrays', async (req, res) => {
-  try {
-    // Find all clients
-    const clients = await Client.find({ father: { $exists: true, $ne: null } });
-
-    for (const client of clients) {
-      const fatherId = client.father;
-
-      // Find the father
-      const father = await Client.findById(fatherId);
-
-      if (father) {
-        // Check if the client's ID is already in the father's children array
-        if (!father.children.includes(client._id)) {
-          // Add the client's ID to the father's children array
-          father.children.push(client._id);
-          await father.save();
-        }
-      } else {
-        console.log(`Father with ID ${fatherId} not found for client ${client._id}`);
-      }
-    }
-
-    res.status(200).json({ msg: "Children arrays have been fixed successfully." });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-authRouter.post('/recalculate-earnings', async (req, res) => {
-  try {
-    await Client.recalculateAllEarnings();
-    res.status(200).json({ message: 'Earnings recalculated for all clients successfully!' });
-  } catch (error) {
-    console.error('Error recalculating earnings:', error);
-    res.status(500).json({ message: 'An error occurred while recalculating earnings.' });
-  }
-});
-
+}); 
 
 module.exports = authRouter;
