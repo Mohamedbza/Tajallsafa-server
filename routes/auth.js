@@ -122,7 +122,7 @@ authRouter.get('/client', authMiddleware, async (req, res) => {
     console.log("Received token:", req.header('x-auth-token')); // Debug token
     console.log("Authenticated user ID:", req.user._id); // Debug user
     
-    const client = await Client.findById(req.user._id).select('-password');
+    const client = await Client.findById(req.user._id).select('+password');
     if (!client) {
       return res.status(404).json({ error: 'User not found' });
     }
