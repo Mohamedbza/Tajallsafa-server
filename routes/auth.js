@@ -22,7 +22,7 @@ authRouter.post("/signup", async (req, res) => {
     }
 
     // Hash the password
-    const hashedPassword = await bcryptjsjs.hash(password, 6);
+    const hashedPassword = await bcryptjs.hash(password, 6);
 
     // Create a new Client
     let client = new Client({
@@ -63,7 +63,7 @@ authRouter.post("/signin", async (req, res) => {
         .status(400)
         .json({ msg: "لا يوجد عميل يحمل هذا البريد الإلكتروني" });
     }
-    const isMatch = await bcryptjsjs.compare(password, client.password);
+    const isMatch = await bcryptjs.compare(password, client.password);
     if (!isMatch) {
       return res.status(400).json({ msg: "كلمة السر خاطئة" });
     }
