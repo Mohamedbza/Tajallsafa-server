@@ -9,22 +9,15 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ msg: "No auth token, access denied" });
     }
 
-    // 1. Verify token
+    // Verify token
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded Token:", verified);
-
+    
     if (!verified?.id) {
       return res.status(401).json({ msg: "Invalid token structure." });
     }
 
-    // 2. Fetch full client data
-    const client = await Client.findById(verified.id).select("-password");
-    if (!client) {
-      return res.status(404).json({ msg: "Client not found" });
-    }
-
-    // 3. Attach full client object to req
-    req.user = client; // Now routes can access req.user._id, req.user.username, etc.
+    // Attach only the user ID to the request
+    req.userId = verified.id;
     req.token = token;
     next();
   } catch (err) {

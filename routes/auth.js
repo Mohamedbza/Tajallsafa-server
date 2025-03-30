@@ -173,51 +173,38 @@ authRouter.get('/client', authMiddleware, async (req, res) => {
     }
 });
 authRouter.put('/:clientId/updatePassword', async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const clientId = req.params.clientId;
-
-  // Validate required fields
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ msg: 'يجب تقديم كلمة السر الحالية والجديدة' });
-  }
-
   try {
-    // Find client by ID and explicitly select password field
+    const { currentPassword, newPassword } = req.body;
+    const clientId = req.params.clientId;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ msg: "Current and new password required" });
+    }
+
+    // Find client WITH password field
     const client = await Client.findById(clientId).select('+password');
     if (!client) {
-      return res.status(404).json({ msg: 'العميل غير موجود' });
+      return res.status(404).json({ msg: "Client not found" });
     }
 
-    // Verify current password - using bcryptjs to match your signin
+    // Verify current password
     const isMatch = await bcryptjs.compare(currentPassword, client.password);
     if (!isMatch) {
-      return res.status(401).json({ msg: 'كلمة السر الحالية غير صحيحة' });
+      return res.status(401).json({ msg: "Current password is incorrect" });
     }
 
-    // Hash new password with same salt rounds (6) as signup
-    const hashedPassword = await bcryptjs.hash(newPassword, 6);
-    client.password = hashedPassword;
-
-    // Add password change notification
-    client.notifications.push({
-      title: 'تم تغيير كلمة السر',
-      message: 'تم تغيير كلمة سر حسابك بنجاح',
-      createdAt: new Date(),
-    });
-
-    // Save changes
+    // Hash and save new password
+    client.password = await bcryptjs.hash(newPassword, 6);
     await client.save();
-    
-    // Remove password before sending response
+
+    // Return success without password
     client.password = undefined;
+    res.json({ msg: "Password updated successfully", client });
     
-    res.status(200).json({ 
-      msg: 'تم تحديث كلمة السر بنجاح',
-      client
-    });
-  } catch (error) {
-    console.error('خطأ في تحديث كلمة السر:', error);
-    res.status(500).json({ msg: 'حدث خطأ أثناء تحديث كلمة السر' });
+  } catch (err) {
+    console.error("Password update error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
