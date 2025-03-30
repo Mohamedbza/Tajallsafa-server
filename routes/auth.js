@@ -178,25 +178,32 @@ authRouter.put('/:clientId/updatePassword', async (req, res) => {
 
   // Validate required fields
   if (!currentPassword || !newPassword) {
-    return res.status(400).json({ msg: 'Both current and new password are required' });
+    return res.status(400).json({ msg: 'يجب تقديم كلمة السر الحالية والجديدة' });
   }
 
   try {
-    // Find client by ID
+    // Find client by ID and explicitly select password field
     const client = await Client.findById(clientId).select('+password');
     if (!client) {
-      return res.status(404).json({ msg: 'Client not found' });
+      return res.status(404).json({ msg: 'العميل غير موجود' });
     }
 
-    // Verify current password
+    // Verify current password - using bcryptjs to match your signin
     const isMatch = await bcryptjs.compare(currentPassword, client.password);
     if (!isMatch) {
-      return res.status(401).json({ msg: 'Current password is incorrect' });
+      return res.status(401).json({ msg: 'كلمة السر الحالية غير صحيحة' });
     }
 
-    // Hash and update new password
-    const salt = await bcryptjs.genSalt(10);
-    client.password = await bcryptjs.hash(newPassword, salt);
+    // Hash new password with same salt rounds (6) as signup
+    const hashedPassword = await bcryptjs.hash(newPassword, 6);
+    client.password = hashedPassword;
+
+    // Add password change notification
+    client.notifications.push({
+      title: 'تم تغيير كلمة السر',
+      message: 'تم تغيير كلمة سر حسابك بنجاح',
+      createdAt: new Date(),
+    });
 
     // Save changes
     await client.save();
@@ -205,12 +212,12 @@ authRouter.put('/:clientId/updatePassword', async (req, res) => {
     client.password = undefined;
     
     res.status(200).json({ 
-      msg: 'Password updated successfully',
+      msg: 'تم تحديث كلمة السر بنجاح',
       client
     });
   } catch (error) {
-    console.error('Password update error:', error);
-    res.status(500).json({ msg: 'Server error during password update' });
+    console.error('خطأ في تحديث كلمة السر:', error);
+    res.status(500).json({ msg: 'حدث خطأ أثناء تحديث كلمة السر' });
   }
 });
 
