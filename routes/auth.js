@@ -1,5 +1,5 @@
 const express = require("express");
-const bcryptjs = require("bcryptjs");
+const bcryptjs = require("bcryptjsjs");
 const Client = require("../models/client");
 const authRouter = express.Router();
 const jwt = require("jsonwebtoken");
@@ -22,7 +22,7 @@ authRouter.post("/signup", async (req, res) => {
     }
 
     // Hash the password
-    const hashedPassword = await bcryptjs.hash(password, 6);
+    const hashedPassword = await bcryptjsjs.hash(password, 6);
 
     // Create a new Client
     let client = new Client({
@@ -63,7 +63,7 @@ authRouter.post("/signin", async (req, res) => {
         .status(400)
         .json({ msg: "لا يوجد عميل يحمل هذا البريد الإلكتروني" });
     }
-    const isMatch = await bcryptjs.compare(password, client.password);
+    const isMatch = await bcryptjsjs.compare(password, client.password);
     if (!isMatch) {
       return res.status(400).json({ msg: "كلمة السر خاطئة" });
     }
@@ -189,14 +189,14 @@ authRouter.put('/:clientId/updatePassword', async (req, res) => {
     }
 
     // Verify current password
-    const isMatch = await bcrypt.compare(currentPassword, client.password);
+    const isMatch = await bcryptjs.compare(currentPassword, client.password);
     if (!isMatch) {
       return res.status(401).json({ msg: 'Current password is incorrect' });
     }
 
     // Hash and update new password
-    const salt = await bcrypt.genSalt(10);
-    client.password = await bcrypt.hash(newPassword, salt);
+    const salt = await bcryptjs.genSalt(10);
+    client.password = await bcryptjs.hash(newPassword, salt);
 
     // Save changes
     await client.save();
