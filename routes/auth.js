@@ -167,7 +167,7 @@ authRouter.put('/:clientid/updateClient', async (req, res) => {
         res.status(500).json({ msg: error.message });
     }
 });
-authRouter.put('/update-password', authMiddleware, async (req, res) => {
+authRouter.put('/:clientId/updatePassword', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     
