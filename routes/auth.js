@@ -172,95 +172,46 @@ authRouter.get('/client', authMiddleware, async (req, res) => {
         res.status(500).json({ msg: error.message });
     }
 });
-authRouter.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+authRouter.put('/:clientId/updatePassword', async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const clientId = req.params.clientId;
+
+  // Validate required fields
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ msg: 'Both current and new password are required' });
+  }
 
   try {
-      const client = await Client.findOne({ email });
-      if (!client) {
-          return res.status(400).json({ msg: 'Client with this email does not exist!' });
-      }
+    // Find client by ID
+    const client = await Client.findById(clientId).select('+password');
+    if (!client) {
+      return res.status(404).json({ msg: 'Client not found' });
+    }
 
-      // Generate a 6-digit reset code
-      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const resetPasswordExpires = Date.now() + 10 * 60 * 1000; // Code valid for 10 minutes
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, client.password);
+    if (!isMatch) {
+      return res.status(401).json({ msg: 'Current password is incorrect' });
+    }
 
-      // Save reset code and expiry to the client
-      client.resetPasswordToken = resetCode;
-      client.resetPasswordExpires = resetPasswordExpires;
-      await client.save();
+    // Hash and update new password
+    const salt = await bcrypt.genSalt(10);
+    client.password = await bcrypt.hash(newPassword, salt);
 
-      // Send reset code email
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.businesstitans.pro', // Replace with your SMTP server address
-        port: 465, // Use 587 if you're using TLS
-        secure: true, // Use true for 465 (SSL), false for other ports (TLS)
-        auth: {
-          user: 'admin@businesstitans.pro', // Your Hostinger email address
-          pass: 'Taherskikda21$', // Your Hostinger email password
-        },
-      });
-
-      const mailOptions = {
-          from: 'admin@businesstitans.pro',
-          to: client.email,
-          subject: 'طلب تغيير كلمة سر حساب بيزنس تايتنس',
-          text: `لقد طلبت تغيير كلمة السر الخاصة بك, من فضلك استخدم هذا الرمز لتغيير كلمة السر الخاصة بك: ${resetCode}. هذا الرمز صالح لمدة 10 دقائق.`, // Arabic text explaining the reset code
-      };
-
-      await transporter.sendMail(mailOptions);
-
-      res.status(200).json({ msg: 'Reset password code sent!' });
-  } catch (e) {
-      res.status(500).json({ error: e.message });
+    // Save changes
+    await client.save();
+    
+    // Remove password before sending response
+    client.password = undefined;
+    
+    res.status(200).json({ 
+      msg: 'Password updated successfully',
+      client
+    });
+  } catch (error) {
+    console.error('Password update error:', error);
+    res.status(500).json({ msg: 'Server error during password update' });
   }
 });
-
-authRouter.post('/verify-reset-code', async (req, res) => {
-  const { resetCode } = req.body; // Get reset code from request body
-
-  try {
-      // Find the client by the reset code and check if the reset code is still valid
-      const client = await Client.findOne({
-          resetPasswordToken: resetCode,
-          resetPasswordExpires: { $gt: Date.now() }, // Ensure the code has not expired
-      });
-
-      if (!client) {
-          return res.status(400).json({ msg: 'Invalid or expired reset code!' });
-      }
-
-      res.status(200).json({ msg: 'Reset code is valid!' });
-  } catch (e) {
-      res.status(500).json({ error: e.message });
-  }
-});
-
-authRouter.post('/reset-password', async (req, res) => {
-  const { resetCode, password } = req.body; // Get resetCode and password from request body
-
-  try {
-      // Find the client by the reset code and check if the reset code is still valid
-      const client = await Client.findOne({
-          resetPasswordToken: resetCode,
-          resetPasswordExpires: { $gt: Date.now() }, // Ensure the code has not expired
-      });
-
-      if (!client) {
-          return res.status(400).json({ msg: 'Invalid or expired reset code!' });
-      }
-
-      // Hash the new password and save it
-      const hashedPassword = await bcryptjs.hash(password, 6);
-      client.password = hashedPassword;
-      client.resetPasswordToken = undefined; // Clear the reset code and expiry
-      client.resetPasswordExpires = undefined;
-      await client.save();
-
-      res.status(200).json({ msg: 'Password reset successful!' });
-  } catch (e) {
-      res.status(500).json({ error: e.message });
-  }
-}); 
 
 module.exports = authRouter;
