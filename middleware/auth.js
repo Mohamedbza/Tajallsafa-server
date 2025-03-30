@@ -1,22 +1,16 @@
 const jwt = require("jsonwebtoken");
-const Client = require("../models/client"); // Import your Client model
+const Client = require("../models/client");
 require("dotenv").config();
 
-const auth = async (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     const token = req.header("x-auth-token");
-    if (!token) {
-      return res.status(401).json({ msg: "No auth token, access denied" });
-    }
+    if (!token) return res.status(401).json({ msg: "No auth token, access denied" });
 
-    // Verify token
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    
-    if (!verified?.id) {
-      return res.status(401).json({ msg: "Invalid token structure." });
-    }
+    if (!verified?.id) return res.status(401).json({ msg: "Invalid token structure" });
 
-    // Attach only the user ID to the request
+    // Only attach user ID to request
     req.userId = verified.id;
     req.token = token;
     next();
@@ -26,4 +20,4 @@ const auth = async (req, res, next) => {
   }
 };
 
-module.exports = auth;
+module.exports = authMiddleware;

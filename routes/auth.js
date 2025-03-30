@@ -119,23 +119,18 @@ authRouter.post('/tokenIsValid', async (req, res) => {
 // Fetch user data
 authRouter.get('/client', authMiddleware, async (req, res) => {
   try {
-    console.log("Received token:", req.header('x-auth-token')); // Debug token
-    console.log("Authenticated user ID:", req.user._id); // Debug user
-    
-    const client = await Client.findById(req.user._id).select('+password');
+    const client = await Client.findById(req.userId).select('-password');
     if (!client) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    console.log("Returning client data:", client); // Debug response
     res.json(client);
   } catch (err) {
-    console.error("Error in /client:", err); // Critical debug
+    console.error("Error in /client:", err);
     res.status(500).json({ error: err.message });
   }
 });
   // Update client information: username, phone and email
-  authRouter.put('/:clientid/updateClient', async (req, res) => {
+authRouter.put('/:clientid/updateClient', async (req, res) => {
     const { username, email, phone } = req.body;
     const clientId = req.params.clientid; // Get client ID from URL
 
@@ -172,18 +167,16 @@ authRouter.get('/client', authMiddleware, async (req, res) => {
         res.status(500).json({ msg: error.message });
     }
 });
-authRouter.put('/:clientId/updatePassword', async (req, res) => {
+authRouter.put('/update-password', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const clientId = req.params.clientId;
-
-    // Validate input
+    
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ msg: "Current and new password required" });
     }
 
     // Find client WITH password field
-    const client = await Client.findById(clientId).select('+password');
+    const client = await Client.findById(req.userId).select('+password');
     if (!client) {
       return res.status(404).json({ msg: "Client not found" });
     }
@@ -194,14 +187,19 @@ authRouter.put('/:clientId/updatePassword', async (req, res) => {
       return res.status(401).json({ msg: "Current password is incorrect" });
     }
 
-    // Hash and save new password
+    // Update password
     client.password = await bcryptjs.hash(newPassword, 6);
     await client.save();
 
     // Return success without password
-    client.password = undefined;
-    res.json({ msg: "Password updated successfully", client });
+    const clientData = client.toObject();
+    delete clientData.password;
     
+    res.json({ 
+      msg: "Password updated successfully",
+      client: clientData
+    });
+
   } catch (err) {
     console.error("Password update error:", err);
     res.status(500).json({ error: err.message });
